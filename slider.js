@@ -25,9 +25,9 @@
     
     function loadLogos() {
         var targetValue = CONFIG.wordpressTag;
-        console.log('Lade Medien mit [' + targetValue + ']...');
+        console.log('Lade ALLE Medien und filtere nach ALT-Text...');
         
-        return fetch('/wp-json/wp/v2/media?search=' + encodeURIComponent(targetValue) + '&per_page=100')
+        return fetch('/wp-json/wp/v2/media?per_page=100')
             .then(function(response) {
                 if (!response.ok) throw new Error('API Fehler');
                 return response.json();
@@ -61,7 +61,7 @@
                     }
                 }
                 
-                console.log('Gefunden: ' + filteredMedia.length + ' Logos');
+                console.log('Gefunden: ' + filteredMedia.length + ' Logos mit [' + targetValue + '] im ALT-Text');
                 return filteredMedia;
             })
             .catch(function(error) {
