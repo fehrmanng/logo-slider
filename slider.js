@@ -128,7 +128,7 @@
                 track.appendChild(createLogoElement(shuffled[i]));
             }
             
-            var duration = Math.max(30, logos.length * 1.0);
+            var duration = Math.max(30, logos.length * 2.0);
             track.style.animationDuration = duration + 's';
             
             console.log('Fertig! Animation: ' + duration + ' Sekunden');
