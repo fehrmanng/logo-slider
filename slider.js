@@ -25,49 +25,80 @@
     
     function loadLogos() {
         var targetValue = CONFIG.wordpressTag;
-        console.log('Lade ALLE Medien und filtere nach ALT-Text...');
+        console.log('Lade ALLE Medien (mit Pagination)...');
         
-        return fetch('/wp-json/wp/v2/media?per_page=100')
-            .then(function(response) {
-                if (!response.ok) throw new Error('API Fehler');
-                return response.json();
-            })
-            .then(function(allMedia) {
-                console.log('API: ' + allMedia.length + ' Medien geladen');
-                
-                var filteredMedia = [];
-                var marker = '[' + targetValue + ']';
-                
-                for (var i = 0; i < allMedia.length; i++) {
-                    var media = allMedia[i];
-                    var found = false;
-                    
-                    if (media.alt_text && media.alt_text.indexOf(marker) !== -1) {
-                        found = true;
-                    } else if (media.description && media.description.rendered && 
-                             media.description.rendered.indexOf(marker) !== -1) {
-                        found = true;
-                    }
-                    
-                    if (found) {
-                        filteredMedia.push({
-                            name: media.alt_text || media.title.rendered || 'Logo',
-                            url: media.source_url
-                        });
-                        
-                        if (filteredMedia.length <= 3) {
-                            console.log('Logo gefunden: ' + (media.title.rendered || 'Ohne Titel'));
+        var allMedia = [];
+        var page = 1;
+        var maxPages = 5; // Max 500 Bilder (5 Seiten x 100)
+        
+        function loadPage(pageNum) {
+            return fetch('/wp-json/wp/v2/media?per_page=100&page=' + pageNum)
+                .then(function(response) {
+                    if (!response.ok) {
+                        if (response.status === 400) {
+                            console.log('Alle Seiten geladen');
+                            return [];
                         }
+                        throw new Error('API Fehler');
                     }
+                    return response.json();
+                })
+                .then(function(mediaItems) {
+                    if (mediaItems.length === 0) {
+                        console.log('Keine weiteren Bilder auf Seite ' + pageNum);
+                        return [];
+                    }
+                    console.log('Seite ' + pageNum + ': ' + mediaItems.length + ' Bilder geladen');
+                    return mediaItems;
+                });
+        }
+        
+        function loadAllPages() {
+            return loadPage(page).then(function(mediaItems) {
+                if (mediaItems.length === 0 || page >= maxPages) {
+                    return allMedia;
+                }
+                allMedia = allMedia.concat(mediaItems);
+                page++;
+                return loadAllPages();
+            });
+        }
+        
+        return loadAllPages().then(function() {
+            console.log('GESAMT: ' + allMedia.length + ' Medien geladen');
+            
+            var filteredMedia = [];
+            var marker = '[' + targetValue + ']';
+            
+            for (var i = 0; i < allMedia.length; i++) {
+                var media = allMedia[i];
+                var found = false;
+                
+                if (media.alt_text && media.alt_text.indexOf(marker) !== -1) {
+                    found = true;
+                } else if (media.description && media.description.rendered && 
+                         media.description.rendered.indexOf(marker) !== -1) {
+                    found = true;
                 }
                 
-                console.log('Gefunden: ' + filteredMedia.length + ' Logos mit [' + targetValue + '] im ALT-Text');
-                return filteredMedia;
-            })
-            .catch(function(error) {
-                console.error('Fehler beim Laden:', error);
-                return [];
-            });
+                if (found) {
+                    filteredMedia.push({
+                        name: media.alt_text || media.title.rendered || 'Logo',
+                        url: media.source_url
+                    });
+                    
+                    if (filteredMedia.length <= 5) {
+                        console.log('Logo ' + filteredMedia.length + ': ' + (media.title.rendered || 'Ohne Titel'));
+                    }
+                }
+            }
+            
+            console.log('Gefunden: ' + filteredMedia.length + ' Logos mit [' + targetValue + '] im ALT-Text');
+            return filteredMedia;
+        }).catch(function(error) {
+            console.error('Fehler beim Laden:', error);
+            return [];
+        });
     }
     
     function initSlider() {
